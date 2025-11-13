@@ -3,27 +3,16 @@
 #SBATCH --partition=gpuA40x4
 #SBATCH --mem=64g
 #SBATCH --time=18:10:00
-#SBATCH --job-name=tune-mlp
+#SBATCH --job-name=best-lstm
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --gpus-per-node=1
-#SBATCH --array=0
+#SBATCH --output=logs-best/%x-%j.out  # Save output log
 
 module load python/3.11.6
 module load cuda/11.8.0
-
 source ~/Differentiable-Hydrological-Model-DRB/diffhydro-env/bin/activate
 
-# Tuning MLP nodes
-HIDDEN_DIMS_LIST=(2028)
-HIDDEN_DIM=${HIDDEN_DIMS_LIST[${SLURM_ARRAY_TASK_ID}]}
-
-export HIDDEN_DIM
-export NUM_HBV_UNITS=16
-
-LOGFILE=logs-tune/tune_mlp_${NUM_HBV_UNITS}hbv_hidden_${HIDDEN_DIM}_%j.log
-echo "Hidden dim: ${HIDDEN_DIM}" > ${LOGFILE}
-
 # Run training and save output to log only
-python 01camels_tune_mlp_hbv.py >> ${LOGFILE} 2>&1
+python 04camels_best_lstm_hbv.py

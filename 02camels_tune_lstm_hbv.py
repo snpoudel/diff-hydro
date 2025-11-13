@@ -1,4 +1,8 @@
-# run_lstm_hbv.py
+'''
+This is a script to tune hyperparameters for LSTM-HBV model on CAMELS dataset.
+It mainly tunes the hidden layer size for single HBV model and ensemble HBV model.
+The following submission script dynamically sets hidden layer size and number of HBV units.
+'''
 import pandas as pd
 import numpy as np
 import os
@@ -22,12 +26,12 @@ static_feats_names = [
 ]
 
 data_dir = "data"
-output_dir = "output/tune_lstm_hbv" # ‼️read this from submission script argument
+output_dir = "output/tune_lstm_hbv" 
 os.makedirs(output_dir, exist_ok=True)
 
 scaler_path = f"{data_dir}/scaler_camels_lstm_hbv.pt"
 input_dim = len(static_feats_names) + 3 # 14 Number of static features
-hidden_dim = 256 # hidden dimension - ‼️read this from submission script argument
+hidden_dim = int(os.environ.get("HIDDEN_DIM", 256)) # Hidden layer size from environment variable or default to 256
 output_dim = 20 # Number of HBV parameters
 batch_size = 128 # batch size
 epochs = 1000 # 100 Maximum number of training epochs
@@ -40,13 +44,15 @@ stride_length = 60 # sliding window of stride length when creating sequences
 # num_ensemble = 5  # 5 number of MC dropout samples
 early_stopping_patience = 5 # Patience for early stopping
 lr_patience = 2 # Patience for learning rate reduction
-num_hbv_units = 1 # predict 1 set of HBV parameters per basin
+num_hbv_units = int(os.environ.get("NUM_HBV_UNITS", 1)) # Number of HBV units from environment variable or default to 1
 # test_batch_size = 128 #Number of basins to run in parallel during inference
 model_path = f"{output_dir}/best_lstm_model_{num_hbv_units}hbv_{hidden_dim}hiddensize.pt"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+print(f'Using hidden size: {hidden_dim}, num_hbv_units: {num_hbv_units}, device: {device}')
+
 # Get file list from data directory
-basin_list = pd.read_csv("camels531.csv")# ‼️‼️check correct list file
+basin_list = pd.read_csv("camels531.csv")
 
 #randomly select 20% of basins as test set
 test_basin = basin_list.sample(frac=0.2, random_state=42).reset_index(drop=True)
