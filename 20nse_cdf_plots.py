@@ -17,12 +17,19 @@ def nse(observed, simulated):
 
 
 # NSE cdf plot for ungauged basins predictions
-model_name = 'best_lstm_16hbv'
+model = 'lstm' # 'lstm', 'mlp'
+unit = '1' # '1', '2'
+exp = '' #'exp_thinned', ''
+
+model_name = f'best_{model}_{unit}hbv'
+out_path = f'output/{exp}'
+figure_title = f'Summary Performance for: {model}+{unit}hbv Model ({exp.replace("_", " ").title()})'
+figure_name = f'{exp} {model}+{unit}hbv NSE'
 
 ## Out of sample in Time
 all_basin_list = pd.read_csv(f'camels531.csv')
 
-ungauged_basins = pd.read_csv(f'output/{model_name}/test_basins.csv')
+ungauged_basins = pd.read_csv(f'{out_path}/{model_name}/test_basins.csv')
 gauged_basins = all_basin_list[~all_basin_list['name'].isin(ungauged_basins['name'])]
 
 gauged_basins = gauged_basins["name"].values
@@ -31,7 +38,7 @@ gauge_id = [str(gid).zfill(8) for gid in gauged_basins]
 median_nse_values = []
 for file in gauge_id:
     try:
-        df = pd.read_csv(f'output/{model_name}/pred_input_{file}.csv')
+        df = pd.read_csv(f'{out_path}/{model_name}/pred_input_{file}.csv')
         df['date'] = pd.to_datetime(df['date'])
         df = df[(df['date'] >= pd.to_datetime('1980-01-01')) & (df['date'] <= pd.to_datetime('1989-12-31'))]
         df = df.dropna(subset=['qobs', 'qsim_1'])
@@ -51,7 +58,7 @@ pub_gauge_id = [str(gid).zfill(8) for gid in pub_gauge_id]
 pub_median_nse_values = []
 for file in pub_gauge_id:
     try:
-        df = pd.read_csv(f'output/{model_name}/pred_input_{file}.csv')
+        df = pd.read_csv(f'{out_path}/{model_name}/pred_input_{file}.csv')
         df['date'] = pd.to_datetime(df['date'])
         # remove any rows with NaN values in qobs or qsim_1
         df = df.dropna(subset=['qobs', 'qsim_1'])
@@ -77,12 +84,12 @@ plt.scatter(sorted_nse, cdf, color='blue', s=5)
 plt.plot(sorted_pub_nse, cdf_pub, color='orange', lw=1.5, label=f'DiffModel out-of-sample in space\n Count={len(pub_median_nse_values)} | Median NSE={np.median(pub_median_nse_values):.2f}')
 plt.scatter(sorted_pub_nse, cdf_pub, color='orange', s=5)
 plt.axhline(y=0.5, color='brown', linestyle='--', lw=1.5)
-plt.xlabel('Nash-Sutcliffe Efficiency (NSE)')
-plt.ylabel('Cumulative Distribution Function (CDF)')
-plt.title(f"Summary Performance for: {model_name.replace('best_', '').upper().replace('_', ' + ')} Model")
-plt.legend(fontsize=10)
+plt.xlabel('Nash-Sutcliffe Efficiency (NSE)', fontsize=10)
+plt.ylabel('Cumulative Distribution Function (CDF)', fontsize=10)
+plt.title(figure_title, fontsize=10)
+plt.legend(fontsize=9)
 plt.xlim([-1, 1])
 plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
-plt.savefig(f'figures/{model_name}_NSE.png', dpi=300)
+plt.savefig(f'figures/{figure_name}.jpeg', dpi=300)
 plt.show()
