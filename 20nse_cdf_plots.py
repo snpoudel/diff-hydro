@@ -17,14 +17,16 @@ def nse(observed, simulated):
 
 
 # NSE cdf plot for ungauged basins predictions
-model = 'lstm' # 'lstm', 'mlp'
-unit = '1' # '1', '2'
-exp = '' #'exp_thinned', ''
+model = 'mlp' # 'lstm', 'mlp'
+unit = '16' # '1', '16'
+exp = 'exp_thinned/no_latlon' #'exp_thinned', ''
 
 model_name = f'best_{model}_{unit}hbv'
 out_path = f'output/{exp}'
 figure_title = f'Summary Performance for: {model}+{unit}hbv Model ({exp.replace("_", " ").title()})'
 figure_name = f'{exp} {model}+{unit}hbv NSE'
+#if any / in figure_name, replace with _
+figure_name = figure_name.replace('/', ' ')
 
 ## Out of sample in Time
 all_basin_list = pd.read_csv(f'camels531.csv')

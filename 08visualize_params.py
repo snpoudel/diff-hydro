@@ -1,4 +1,10 @@
-
+'''
+Script to visualize spatial variability and temporal dynamics of HBV model parameters
+produced by the LSTM model. These parameters are dynamic during training but we run the LSTM-HBV
+model with full sequence length per basin and use last step parameters during inference making them
+static per basin. This script basically analyzes the temporal variability of HBV parameters during training
+which are often used as 'static' parameters during inference.
+'''
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -102,6 +108,7 @@ def plot_param(param):
     params['date'] = pd.to_datetime(params['date'])
 
     sns.lineplot(data=params, x='date', y=param, ax=ax2, color='tab:blue')
+    sns.scatterplot(data=params, x='date', y=param, ax=ax2, color='tab:blue', s=10)
     low, high = param_bounds[param]
     ax2.axhline(low, color='red', linestyle='--', linewidth=1, label='Lower bound')
     ax2.axhline(high, color='orange', linestyle='--', linewidth=1, label='Upper bound')
