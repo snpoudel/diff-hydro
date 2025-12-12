@@ -87,7 +87,8 @@ gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else st
 
 
 # Iterate basin by basin to get parameters using integrated gradients
-for basin_id in gauge_id[0:1]:  # ‼️change to gauge_id to run for all basins
+use_basins = ['01532000', '10336660', '02465493'] #basin with highes, medium, lowest parameter variance
+for basin_id in use_basins:  # ‼️change to gauge_id to run for all basins
     file_path = os.path.join(data_dir, f"input_{basin_id}.csv")
     if not os.path.exists(file_path):
         continue
@@ -96,7 +97,7 @@ for basin_id in gauge_id[0:1]:  # ‼️change to gauge_id to run for all basins
     df['date'] = pd.to_datetime(df['date'])
 
     # Only use years 2006–2009 for testing period
-    df = df[df['date'].dt.year.isin(range(1980, 1989))].reset_index(drop=True)
+    df = df[df['date'].dt.year.isin(range(1990, 2006))].reset_index(drop=True)
 
     # Loop through output parameters
     for par_index in range(output_dim):  # HBV unit = 1 output here

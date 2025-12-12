@@ -50,13 +50,126 @@ us = us[us['admin'] == 'United States of America']
 output_dir = "figures/hbv_parameters"
 os.makedirs(output_dir, exist_ok=True)
 
-# --- Function to plot map + timeseries for a single parameter
+
+
+##-------------------------------------------------------------------##--------------------------------------------------------------------------##-----------------------------------------------------------
+## map showing the average coefficient of variation across all parameters per basin
+# create a filtered list of parameter names excluding 'tm' and 'ts' to avoid high CV due to near-zero means
+filtered_param_names = [p for p in param_names if p not in ['tm', 'ts']]
+
+param_var_all = {}
+for basin in basin_list['name']:
+    param_file = f"output/best_lstm_1hbv_parameters/input_{basin}_parameters.csv"
+    df_params = pd.read_csv(param_file)
+    df_params['date'] = pd.to_datetime(df_params['date'])
+    # remove tm and ts as their mean is close to zero causing high cv relative to others
+    df_params = df_params.drop(columns=['tm', 'ts'], errors='ignore')
+    # only keep for training years: 1990-2005
+    df_params = df_params[(df_params['date'] >= '1990-01-01') & (df_params['date'] <= '2005-12-31')]
+    cv_list = []
+    for param in filtered_param_names:
+        mean_val = np.mean(df_params[param].values)
+        std_val = np.std(df_params[param].values)
+        cv = std_val / mean_val if mean_val != 0 else 0
+        cv_list.append(cv)
+    param_var_all[basin] = np.mean(cv_list) if len(cv_list) > 0 else 0
+param_var_all_df = pd.DataFrame.from_dict(param_var_all, orient='index', columns=['avg_cv']).reset_index().rename(columns={'index': 'basin'})
+# sort and save to csv
+param_var_all_df = param_var_all_df.sort_values(by='avg_cv', ascending=False)
+param_var_all_df.to_csv(f"{output_dir}/avg_cv_all_parameters_per_basin.csv", index=False)
+param_var_all_df = param_var_all_df.merge(basin_list[['name', 'lat', 'lon']], left_on='basin', right_on='name', how='left')
+param_var_all_gdf = gpd.GeoDataFrame(
+    param_var_all_df,
+    geometry=gpd.points_from_xy(param_var_all_df.lon, param_var_all_df.lat),
+    crs="EPSG:4326"
+)
+# Plot map
+fig, ax = plt.subplots(1, 1, figsize=(6, 5))
+us.boundary.plot(ax=ax, color='black', linewidth=0.8)
+g = param_var_all_gdf.plot(column='avg_cv', ax=ax, cmap='plasma', markersize=15, legend=False)
+sm = plt.cm.ScalarMappable(cmap='plasma', 
+                           norm=plt.Normalize(vmin=param_var_all_gdf['avg_cv'].min(),
+                                              vmax=param_var_all_gdf['avg_cv'].max()))
+sm._A = []
+cbar = fig.colorbar(sm, ax=ax, orientation='horizontal', fraction=0.03, pad=0.10)
+ax.set_title('Average Coefficient of Variation (std/mean) of HBV Parameters', fontsize=12, pad=12)
+ax.set_xlabel('Longitude')
+ax.set_ylabel('Latitude')
+ax.set_xlim([-130, -65])
+ax.set_ylim([24, 50])
+ax.set_aspect('equal')
+plt.tight_layout()
+fig.savefig(f"{output_dir}/01avg_cv_all_hbv_parameters.jpeg", dpi=300, bbox_inches="tight")
+plt.show()
+
+
+##-------------------------------------------------------------------##--------------------------------------------------------------------------##-----------------------------------------------------------
+# show time series of all parameters for a selected basin in a grid layout
+basin = '12035000'  # highest 12035000, medium, lowest variabiility basins: '06447500',  '10336660', '02465493'
+param_file = f"output/best_lstm_1hbv_parameters/input_{basin}_parameters.csv"
+
+df_params = pd.read_csv(param_file)
+df_params['date'] = pd.to_datetime(df_params['date'])
+
+# Select training period
+df_params = df_params[(df_params['date'] >= '1990-01-01') &
+                      (df_params['date'] <= '2005-12-31')]
+
+# Grid shape
+nrows, ncols = 5, 4
+fig, axes = plt.subplots(nrows, ncols, figsize=(14, 8), sharex=True)
+axes = axes.flatten()
+
+sns.set_style("whitegrid")
+
+for i, param in enumerate(param_names):
+    ax = axes[i]
+
+    # line + markers
+    sns.lineplot(data=df_params, x='date', y=param,
+                 ax=ax, color='tab:blue', linewidth=1)
+    ax.scatter(df_params['date'], df_params[param],
+               color='tab:blue', s=6)
+
+    # bounds
+    low, high = param_bounds[param]
+    ax.axhline(low, color='red', linestyle='--', linewidth=0.8)
+    ax.axhline(high, color='orange', linestyle='--', linewidth=0.8)
+
+    ax.set_title(param, fontsize=10)
+    ax.tick_params(axis='both', labelsize=8)
+    ax.grid(True, linestyle='--', alpha=0.4)
+
+# remove empty panels if any
+for j in range(len(param_names), nrows*ncols):
+    fig.delaxes(axes[j])
+
+# Only bottom row shows X labels
+for ax in axes[-ncols:]:
+    ax.set_xlabel("Date")
+else:
+    for ax in axes[:-ncols]:
+        ax.set_xlabel("")
+
+# Global title
+fig.suptitle(f"HBV Parameter Time Series: Basin {basin}")
+
+plt.tight_layout()
+fig.savefig(f"{output_dir}/02hbv_parameters_timeseries_basin_{basin}.jpeg", dpi=300, bbox_inches="tight")
+plt.show()
+
+
+##-------------------------------------------------------------------##--------------------------------------------------------------------------##-----------------------------------------------------------
+# --- Function to plot map + timeseries for each paramters separately
 def plot_param(param):
     # Compute coefficient of variation per basin
     param_var = {}
     for basin in basin_list['name']:
         param_file = f"output/best_lstm_1hbv_parameters/input_{basin}_parameters.csv"
         params = pd.read_csv(param_file)
+        params['date'] = pd.to_datetime(params['date'])
+        # only keep for training years: 1990-2005
+        params = params[(params['date'] >= '1990-01-01') & (params['date'] <= '2005-12-31')]
         mean_val = np.mean(params[param].values)
         std_val = np.std(params[param].values)
         param_var[basin] = std_val / mean_val if mean_val != 0 else 0
@@ -106,6 +219,8 @@ def plot_param(param):
     param_file = f"output/best_lstm_1hbv_parameters/input_{highest_var_basin}_parameters.csv"
     params = pd.read_csv(param_file)
     params['date'] = pd.to_datetime(params['date'])
+    # only keep for training years: 1990-2005
+    params = params[(params['date'] >= '1990-01-01') & (params['date'] <= '2005-12-31')]
 
     sns.lineplot(data=params, x='date', y=param, ax=ax2, color='tab:blue')
     sns.scatterplot(data=params, x='date', y=param, ax=ax2, color='tab:blue', s=10)
@@ -125,3 +240,5 @@ def plot_param(param):
 # --- Loop over all parameters
 for param in param_names:
     plot_param(param)
+
+
