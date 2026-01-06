@@ -17,11 +17,11 @@ def nse(observed, simulated):
 
 
 # NSE cdf plot for ungauged basins predictions
-model = 'mlp' # 'lstm', 'mlp'
-unit = '16' # '1', '16'
-exp = 'exp_thinned/no_latlon' #'exp_thinned', ''
+model = 'lstm' # 'lstm', 'mlp'
+unit = '1' # '1', '16'
+exp = '' #'exp_thinned', ''
 
-model_name = f'best_{model}_{unit}hbv'
+model_name = f'best_{model}_{unit}hbv'#_dynamic_sim'
 out_path = f'output/{exp}'
 figure_title = f'Summary Performance for: {model}+{unit}hbv Model ({exp.replace("_", " ").title()})'
 figure_name = f'{exp} {model}+{unit}hbv NSE'
@@ -93,5 +93,5 @@ plt.legend(fontsize=9)
 plt.xlim([-1, 1])
 plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
-plt.savefig(f'figures/{figure_name}.jpeg', dpi=300)
+# plt.savefig(f'figures/{figure_name}.jpeg', dpi=300)
 plt.show()

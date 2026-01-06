@@ -50,6 +50,9 @@ for basin_id in basin_ids:
     #add nse to dataframe
     param_varibility.loc[param_varibility['basin'] == int(basin_id), 'nse'] = nse_val
 
+# round avg_cv and nse to 4 decimal places and save to csv
+param_varibility.to_csv(f'figures/hbv_parameters/parameter_variability_nse_correlation.csv', index=False)
+
 #plot parameter variability vs nse
 plt.figure(figsize=(8, 5))
 plt.scatter(param_varibility['avg_cv'], param_varibility['nse'], color='blue', alpha=0.6)
