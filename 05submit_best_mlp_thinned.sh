@@ -3,7 +3,7 @@
 #SBATCH --partition=gpuA40x4
 #SBATCH --mem=64g
 #SBATCH --time=18:10:00
-#SBATCH --job-name=best-mlp
+#SBATCH --job-name=best-mlp-thinned-nolatlon
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -15,4 +15,4 @@ module load cuda/11.8.0
 source ~/Differentiable-Hydrological-Model-DRB/diffhydro-env/bin/activate
 
 # Run training and save output to log only
-python 03camels_best_mlp_hbv.py
+python 05camels_best_mlp_hbv_thinned.py
