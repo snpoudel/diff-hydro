@@ -122,131 +122,131 @@ class HBVDataset(Dataset):
         )
 
 
-##-- Commented out training code --##
-# #-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
-# # Training and Validation
-# start_time = time.time()
+#-- Comment out training code below if using saved model from tuning experiment --##
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+# Training and Validation
+start_time = time.time()
 
-# def masked_mse_loss(pred, target):
-#     mask = ~torch.isnan(target)
-#     if mask.sum() == 0:
-#         return torch.tensor(0.0, device=target.device, requires_grad=True)
-#     return ((pred[mask] - target[mask])**2).mean()
+def masked_mse_loss(pred, target):
+    mask = ~torch.isnan(target)
+    if mask.sum() == 0:
+        return torch.tensor(0.0, device=target.device, requires_grad=True)
+    return ((pred[mask] - target[mask])**2).mean()
 
-# # Datasets and Loaders
-# #use total of 24 years of data: 1995 to 2018; 16 years for training, 8 years for validation
-# train_ds = HBVDataset(file_list, years=list(range(1990, 2006)), fit_scaler=True) # ‼️ Use years 1990-2005 for training
-# scaler = train_ds.scaler # Get the scaler from the training dataset
-# # torch.save(scaler, scaler_path) # save the scaler to a file
-# if not os.path.exists(scaler_path):
-#     torch.save(scaler, scaler_path) # save the scaler to a file if it doesn't exist
+# Datasets and Loaders
+#use total of 24 years of data: 1995 to 2018; 16 years for training, 8 years for validation
+train_ds = HBVDataset(file_list, years=list(range(1990, 2006)), fit_scaler=True) # ‼️ Use years 1990-2005 for training
+scaler = train_ds.scaler # Get the scaler from the training dataset
+# torch.save(scaler, scaler_path) # save the scaler to a file
+if not os.path.exists(scaler_path):
+    torch.save(scaler, scaler_path) # save the scaler to a file if it doesn't exist
 
-# valid_ds = HBVDataset(file_list, years=list(range(2006, 2015)), scaler=scaler) # ‼️ Use years 2006-2014 for validation
+valid_ds = HBVDataset(file_list, years=list(range(2006, 2015)), scaler=scaler) # ‼️ Use years 2006-2014 for validation
 
-# train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-# valid_loader = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
+train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+valid_loader = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
 
-# # Models
-# mlp = MLPParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout).to(device)
-# hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
+# Models
+mlp = MLPParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout).to(device)
+hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
 
-# # Optimizer & Loss
-# optimizer = torch.optim.Adam(mlp.parameters(), lr=lr)
-# loss_fn = masked_mse_loss
+# Optimizer & Loss
+optimizer = torch.optim.Adam(mlp.parameters(), lr=lr)
+loss_fn = masked_mse_loss
 
-# # Learning rate scheduler
-# scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=lr_patience, min_lr=1e-6)
+# Learning rate scheduler
+scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=lr_patience, min_lr=1e-6)
 
-# best_val_loss = float("inf")
-# patience = early_stopping_patience # Early stopping patience
-# epochs_no_improvement = 0
-# # torch.autograd.set_detect_anomaly(True) # Enable anomaly detection during debugging NaNs
-# for epoch in range(1, epochs + 1):
-#     mlp.train()
-#     total_loss = 0.0
+best_val_loss = float("inf")
+patience = early_stopping_patience # Early stopping patience
+epochs_no_improvement = 0
+# torch.autograd.set_detect_anomaly(True) # Enable anomaly detection during debugging NaNs
+for epoch in range(1, epochs + 1):
+    mlp.train()
+    total_loss = 0.0
 
-#     for static, precip, temp, daylen, qobs in train_loader:
-#         static = static.to(device)
-#         precip = precip.to(device)
-#         temp = temp.to(device)
-#         daylen = daylen.to(device)
-#         qobs = qobs.to(device)
+    for static, precip, temp, daylen, qobs in train_loader:
+        static = static.to(device)
+        precip = precip.to(device)
+        temp = temp.to(device)
+        daylen = daylen.to(device)
+        qobs = qobs.to(device)
 
-#         # --- MLP predicts HBV parameters ---
-#         pars = mlp(static)
-#         pars = constrain_multi_parameters(pars, num_hbv_units)
+        # --- MLP predicts HBV parameters ---
+        pars = mlp(static)
+        pars = constrain_multi_parameters(pars, num_hbv_units)
 
-#         # --- Spinup ---
-#         hbv_states = hbv.run_spinup(pars, precip[:, :spinup_days],
-#                                     temp[:, :spinup_days], daylen[:, :spinup_days])
+        # --- Spinup ---
+        hbv_states = hbv.run_spinup(pars, precip[:, :spinup_days],
+                                    temp[:, :spinup_days], daylen[:, :spinup_days])
 
-#         # --- Main period with gradients ---
-#         hbv.set_state(hbv_states)
-#         qsim = hbv(pars, precip[:, spinup_days:], temp[:, spinup_days:], daylen[:, spinup_days:])
+        # --- Main period with gradients ---
+        hbv.set_state(hbv_states)
+        qsim = hbv(pars, precip[:, spinup_days:], temp[:, spinup_days:], daylen[:, spinup_days:])
 
-#         # --- Loss ---
-#         loss = loss_fn(qsim, qobs[:, spinup_days:])
+        # --- Loss ---
+        loss = loss_fn(qsim, qobs[:, spinup_days:])
 
-#         if any(torch.isnan(v).any() for v in [pars, qsim, loss]):
-#             print("NaNs detected in parameters, states, or loss — skipping batch.")
-#             continue
+        if any(torch.isnan(v).any() for v in [pars, qsim, loss]):
+            print("NaNs detected in parameters, states, or loss — skipping batch.")
+            continue
 
-#         optimizer.zero_grad()
-#         loss.backward()
-#         torch.nn.utils.clip_grad_norm_(mlp.parameters(), max_norm=1.0)
-#         optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(mlp.parameters(), max_norm=1.0)
+        optimizer.step()
 
-#         # --- Reset states for next batch ---
-#         hbv.reset_state()
+        # --- Reset states for next batch ---
+        hbv.reset_state()
 
-#         total_loss += loss.detach().cpu().item()
+        total_loss += loss.detach().cpu().item()
 
-#     avg_train_loss = total_loss / len(train_loader)
+    avg_train_loss = total_loss / len(train_loader)
     
-#     # Validation
-#     mlp.eval()
-#     val_loss = 0.0
-#     with torch.no_grad():
-#         for static, precip, temp, daylen, qobs in valid_loader:
-#             static = static.to(device)
-#             precip = precip.to(device)
-#             temp = temp.to(device)
-#             daylen = daylen.to(device)
-#             qobs = qobs.to(device)
+    # Validation
+    mlp.eval()
+    val_loss = 0.0
+    with torch.no_grad():
+        for static, precip, temp, daylen, qobs in valid_loader:
+            static = static.to(device)
+            precip = precip.to(device)
+            temp = temp.to(device)
+            daylen = daylen.to(device)
+            qobs = qobs.to(device)
 
-#             pars = mlp(static)
-#             pars = constrain_multi_parameters(pars, num_hbv_units)
+            pars = mlp(static)
+            pars = constrain_multi_parameters(pars, num_hbv_units)
 
-#             hbv_states = hbv.run_spinup(pars, precip[:, :spinup_days], temp[:, :spinup_days], daylen[:, :spinup_days])
-#             hbv.set_state(hbv_states)
-#             qsim = hbv(pars, precip[:, spinup_days:], temp[:, spinup_days:], daylen[:, spinup_days:])
-#             loss = loss_fn(qsim, qobs[:, spinup_days:])
+            hbv_states = hbv.run_spinup(pars, precip[:, :spinup_days], temp[:, :spinup_days], daylen[:, :spinup_days])
+            hbv.set_state(hbv_states)
+            qsim = hbv(pars, precip[:, spinup_days:], temp[:, spinup_days:], daylen[:, spinup_days:])
+            loss = loss_fn(qsim, qobs[:, spinup_days:])
 
-#             if torch.isnan(loss):
-#                 continue
-#             hbv.reset_state()
+            if torch.isnan(loss):
+                continue
+            hbv.reset_state()
 
-#             val_loss += loss.detach().cpu().item()
+            val_loss += loss.detach().cpu().item()
 
-#     avg_val_loss = val_loss / len(valid_loader)
-#     print(f"Epoch {epoch:02d} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | lr: {optimizer.param_groups[0]['lr']:.6f}")
+    avg_val_loss = val_loss / len(valid_loader)
+    print(f"Epoch {epoch:02d} | Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | lr: {optimizer.param_groups[0]['lr']:.6f}")
 
-#     # Step the scheduler
-#     scheduler.step(avg_val_loss)
+    # Step the scheduler
+    scheduler.step(avg_val_loss)
 
-#     # Early stopping
-#     if avg_val_loss < best_val_loss:
-#         best_val_loss = avg_val_loss
-#         torch.save(mlp.state_dict(), model_path)
-#         epochs_no_improve = 0
-#     else:
-#         epochs_no_improve += 1
+    # Early stopping
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        torch.save(mlp.state_dict(), model_path)
+        epochs_no_improve = 0
+    else:
+        epochs_no_improve += 1
 
-#     if epochs_no_improve >= patience:
-#         print(f'Early stopping triggered at epoch {epoch}. No improvement for {patience} epochs.')
-#         break
-# print(f"Training complete in {(time.time() - start_time)/60:.2f} minutes")
-# print(f"Best validation loss with hidden size of {hidden_dim}  with hbv unit of {num_hbv_units} is {best_val_loss:.4f} at epoch {epoch - epochs_no_improve}")
+    if epochs_no_improve >= patience:
+        print(f'Early stopping triggered at epoch {epoch}. No improvement for {patience} epochs.')
+        break
+print(f"Training complete in {(time.time() - start_time)/60:.2f} minutes")
+print(f"Best validation loss with hidden size of {hidden_dim}  with hbv unit of {num_hbv_units} is {best_val_loss:.4f} at epoch {epoch - epochs_no_improve}")
 
 
 #-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
