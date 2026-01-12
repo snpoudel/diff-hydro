@@ -15,4 +15,4 @@ module load python/3.11.5
 source ~/pyenv-pytorch/bin/activate
 
 # Run your Python script with mpi
-python3 11params_equifinality_test.py
+python3 08lstm_get_sim_from_equifinal_params.py
