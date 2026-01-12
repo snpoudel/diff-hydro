@@ -2,6 +2,8 @@
 Equifinality test for multiple basins and parameters using LSTM + 1HBV model.
 Loops through selected basins and parameters, generates simulations for high/low
 parameter sets, and saves results as CSV files.
+
+Author: Sandeep Poudel (1/12/2026)
 """
 import pandas as pd
 import torch

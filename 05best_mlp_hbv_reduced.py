@@ -2,6 +2,8 @@
 Experiment: Thinned input features- It only uses few static features as input to MLP.
 Use best MLP-HBV model saved from tuning experiment and make predictions on all CAMELS basins.
 Run both 1hbv unit and 16 hbv units models.
+
+Author: Sandeep Poudel (1/12/2026)
 '''
 import pandas as pd
 import numpy as np
@@ -13,8 +15,10 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler
 from models.multi_hbv import MLPParameterNet, DifferentiableMHBV, constrain_multi_parameters   # custom imports
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
+
+## selct static features either including lat, lon or excluding lat, lon
 
 # static_feats_names = ['mean_precip', 'sd_precip', 'mean_tmax', 'sd_tmax', 'mean_tmin', 'sd_tmin',
 #  'mean_daylenhr', 'sd_daylenhr', 'lat', 'lon', 'elev_mean', 'slope_mean', 'area_gages2'
@@ -63,7 +67,7 @@ gauge_id = train_basin["name"].values
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
 file_list = [os.path.join(data_dir, f"input_{gauge_id}.csv") for gauge_id in gauge_id]
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Dataset and DataLoader
 class HBVDataset(Dataset):
     """
@@ -120,7 +124,7 @@ class HBVDataset(Dataset):
         )
 
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Training and Validation
 start_time = time.time()
 
@@ -246,7 +250,7 @@ print(f"Training complete in {(time.time() - start_time)/60:.2f} minutes")
 print(f"Best validation loss with hidden size of {hidden_dim}  with hbv unit of {num_hbv_units} is {best_val_loss:.4f} at epoch {epoch - epochs_no_improve}")
 
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Inference with MC Dropout
 start_time = time.time()
 mlp = MLPParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout)

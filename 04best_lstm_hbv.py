@@ -1,6 +1,8 @@
 '''
 Use best LSTM-HBV model saved from tuning experiment and make predictions on all CAMELS basins.
 Run both 1hbv unit and 16 hbv units models.
+
+Author: Sandeep Poudel (01/12/2026)
 '''
 import pandas as pd
 import numpy as np
@@ -12,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler
 from models.multi_hbv import LSTMParameterNet, DifferentiableMHBV, constrain_multi_parameters   # custom imports
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
 
 static_feats_names = [
@@ -66,7 +68,7 @@ gauge_id = train_basin["name"].values
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
 file_list = [os.path.join(data_dir, f"input_{gauge_id}.csv") for gauge_id in gauge_id]
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Dataset and DataLoader
 class HBVDataset(Dataset):
     """
@@ -134,7 +136,7 @@ class HBVDataset(Dataset):
 
 
 #-- Comment out training code below if using saved model from tuning experiment --##
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Training and Validation
 start_time = time.time()
 
@@ -183,7 +185,6 @@ for epoch in range(1, epochs + 1):
         qobs = qobs.to(device) # [B, T]
         pars = lstm(concat_feats)  # [B, 51] -> [B, 17] HBV parameters
         # --- LSTM predicts HBV parameters ---
-        # pars = lstm(concat_feats) # original code
         pars = lstm(concat_feats[:, -lstm_lookback:, :]) # only use lstm_lookback days for parameter prediction
         pars = constrain_multi_parameters(pars, num_hbv_units)
 
@@ -261,7 +262,7 @@ print(f"Training complete in {(time.time() - start_time)/60:.2f} minutes")
 print(f"Best validation loss with hidden size of {hidden_dim}  with hbv unit of {num_hbv_units} is {best_val_loss:.4f} at epoch {epoch - epochs_no_improve}")
 
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Inference with MC Dropout
 start_time = time.time()
 lstm = LSTMParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout)
@@ -274,7 +275,7 @@ scaler = torch.load(scaler_path, weights_only=False)
 hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
 hbv.eval()  # HBV is deterministic, eval mode is fine
 
-basin_list = pd.read_csv("camels531.csv") # ‼️‼️check if this is correct dataset
+basin_list = pd.read_csv("camels531.csv") 
 gauge_id = basin_list["name"].values
 # add a leading zero if gauge_id is numeric and has length 7
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]

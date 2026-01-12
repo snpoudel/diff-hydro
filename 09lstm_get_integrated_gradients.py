@@ -1,6 +1,10 @@
 '''
-Run integrated gradients to interpret LSTM model predicting HBV parameters for each basin.
+Run integrated gradients analysis to save attributions of input features to LSTM+HBV predicted HBV parameters.
+Saves attributions as CSV files for each basin and each HBV parameter.
+
+Author: Sandeep Poudel (1/12/2026)
 '''
+
 import os
 import pandas as pd
 import numpy as np
@@ -12,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from models.multi_hbv import LSTMParameterNet, DifferentiableMHBV, constrain_multi_parameters   # custom imports
 from captum.attr import IntegratedGradients
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
 
 static_feats_names = [
@@ -67,7 +71,7 @@ gauge_id = train_basin["name"].values
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
 file_list = [os.path.join(data_dir, f"input_{gauge_id}.csv") for gauge_id in gauge_id]
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Inference to save parameters for all basins
 start_time = time.time()
 lstm = LSTMParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout)
@@ -135,7 +139,6 @@ for basin_id in use_basins:  # ‼️change to gauge_id to run for all basins
             seq_date = df['date'].iloc[end - 1]
             all_dates.extend([seq_date] * lstm_lookback)
 
-            # print(f"Basin {basin_id} - Seq {start}:{end}, IG shape={attributions.shape}, Δ={delta.item()}")
 
         # ---- SAVE SECTION ---- #
         attributions = np.concatenate(all_attributions, axis=0)

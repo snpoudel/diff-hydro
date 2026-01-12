@@ -2,6 +2,8 @@
 This is a script to tune hyperparameters for LSTM-HBV model on CAMELS dataset.
 It mainly tunes the hidden layer size for single HBV model and ensemble HBV model.
 The following submission script dynamically sets hidden layer size and number of HBV units.
+
+Author: Sandeep Poudel (1/12/2026)
 '''
 import pandas as pd
 import numpy as np
@@ -13,7 +15,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler
 from models.multi_hbv import LSTMParameterNet, DifferentiableMHBV, constrain_multi_parameters   # custom imports
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
 static_feats_names = [
     "elev_mean", "slope_mean", "area_gages2", "p_mean", "pet_mean", "aridity",
@@ -41,7 +43,7 @@ spinup_days = 365*2 # Spin-up days for HBV model
 sequence_length = spinup_days + 365  # Includes HBV spinup + HBV loss calculation period
 lstm_lookback = 365 # LSTM lookback days - this is extracted from latest part of sequence_length
 stride_length = 60 # sliding window of stride length when creating sequences
-# num_ensemble = 5  # 5 number of MC dropout samples
+# num_ensemble = 5  # 5 number of MC dropout samples, not used currently
 early_stopping_patience = 5 # Patience for early stopping
 lr_patience = 2 # Patience for learning rate reduction
 num_hbv_units = int(os.environ.get("NUM_HBV_UNITS", 1)) # Number of HBV units from environment variable or default to 1
@@ -65,7 +67,7 @@ gauge_id = train_basin["name"].values
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
 file_list = [os.path.join(data_dir, f"input_{gauge_id}.csv") for gauge_id in gauge_id]
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Dataset and DataLoader
 class HBVDataset(Dataset):
     """
@@ -93,7 +95,6 @@ class HBVDataset(Dataset):
             # Concat static and dynamic features into sequences of length `sequence_length`
 
             total_days = len(df)
-            # for start in range(0, total_days - sequence_length + 1, (sequence_length-spinup_days)):  # step by (sequence_length - spinup_days)
             for start in range(0, total_days - sequence_length + 1, stride_length): # step by stride_length
                 end = start + sequence_length
 
@@ -131,7 +132,7 @@ class HBVDataset(Dataset):
             torch.tensor(d["qobs"], dtype=torch.float32),
         )
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Training and Validation
 start_time = time.time()
 
@@ -180,7 +181,6 @@ for epoch in range(1, epochs + 1):
         qobs = qobs.to(device) # [B, T]
         pars = lstm(concat_feats)  # [B, 51] -> [B, 17] HBV parameters
         # --- LSTM predicts HBV parameters ---
-        # pars = lstm(concat_feats) # original code
         pars = lstm(concat_feats[:, -lstm_lookback:, :]) # only use lstm_lookback days for parameter prediction
         pars = constrain_multi_parameters(pars, num_hbv_units)
 

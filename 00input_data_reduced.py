@@ -4,6 +4,8 @@ Keeps: date, precip, tmax, tmin, daylenhr, qobs.
 Adds per-basin summary stats for dynamic features: mean_precip, sd_precip, mean_tmax, sd_tmax, ...
 Also appends static basin attributes (drainage area, elevation, slope, lat, lon).
 Writes thinned CSVs to the 'data_thinned' directory.
+
+Author: Sandeep Poudel (1/12/2026)
 """
 import pandas as pd
 import os

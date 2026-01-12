@@ -1,6 +1,8 @@
 '''
-Use best LSTM-HBV model saved from tuning experiment and saves parameters for all CAMELS basins.
+Use best LSTM-HBV model saved from tuning experiment and saves HBV parameters at all time-steps for all CAMELS basins.
 Runs only for 1HBV unit model.
+
+Author: Sandeep Poudel (1/12/2026)
 '''
 import pandas as pd
 import numpy as np
@@ -12,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler
 from models.multi_hbv import LSTMParameterNet, DifferentiableMHBV, constrain_multi_parameters   # custom imports
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
 
 static_feats_names = [
@@ -65,7 +67,7 @@ gauge_id = train_basin["name"].values
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
 file_list = [os.path.join(data_dir, f"input_{gauge_id}.csv") for gauge_id in gauge_id]
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Dataset and DataLoader
 class HBVDataset(Dataset):
     """
@@ -131,7 +133,7 @@ class HBVDataset(Dataset):
             torch.tensor(d["qobs"], dtype=torch.float32),
         )
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Inference to save parameters for all basins
 start_time = time.time()
 lstm = LSTMParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout)

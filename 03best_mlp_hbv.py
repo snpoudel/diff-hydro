@@ -1,6 +1,8 @@
 '''
 Use best MLP-HBV model saved from tuning experiment and make predictions on all CAMELS basins.
 Run both 1hbv unit and 16 hbv units models.
+
+Author: Sandeep Poudel (1/12/2026)
 '''
 import pandas as pd
 import numpy as np
@@ -12,7 +14,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from sklearn.preprocessing import StandardScaler
 from models.multi_hbv import MLPParameterNet, DifferentiableMHBV, constrain_multi_parameters   # custom imports
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
 
 static_feats_names = [
@@ -44,7 +46,7 @@ dropout = 0.4 # Dropout rate for MLP
 spinup_days = 365*2 # Spin-up days for HBV model
 sequence_length = spinup_days + 365  # Length of the input sequence for HBV model
 stride_length = 60 # sliding window of stride length when creating sequences
-num_ensemble = 1  # number of MC dropout samples during inference
+num_ensemble = 1  # number of MC dropout samples during inference, set to 1 for no MC dropout
 early_stopping_patience = 5 # Patience for early stopping
 lr_patience = 2 # Patience for learning rate reduction
 test_batch_size = 128 #Number of basins to run in parallel during inference
@@ -65,7 +67,7 @@ gauge_id = train_basin["name"].values
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
 file_list = [os.path.join(data_dir, f"input_{gauge_id}.csv") for gauge_id in gauge_id]
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Dataset and DataLoader
 class HBVDataset(Dataset):
     """
@@ -81,7 +83,6 @@ class HBVDataset(Dataset):
         for f in file_list:
             df = pd.read_csv(f)
             # Filter rows only in the desired years
-            # df = df[df["Year"].isin(years)]
             df['date'] = pd.to_datetime(df['date'])
             df = df[df['date'].dt.year.isin(years)].reset_index(drop=True)
 
@@ -123,7 +124,7 @@ class HBVDataset(Dataset):
 
 
 #-- Comment out training code below if using saved model from tuning experiment --##
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Training and Validation
 start_time = time.time()
 
@@ -249,7 +250,7 @@ print(f"Training complete in {(time.time() - start_time)/60:.2f} minutes")
 print(f"Best validation loss with hidden size of {hidden_dim}  with hbv unit of {num_hbv_units} is {best_val_loss:.4f} at epoch {epoch - epochs_no_improve}")
 
 
-#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#--------------------------------#
+#-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Inference with MC Dropout
 start_time = time.time()
 mlp = MLPParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout)
@@ -262,7 +263,7 @@ scaler = torch.load(scaler_path, weights_only=False)
 hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
 hbv.eval()  # HBV is deterministic, eval mode is fine
 
-basin_list = pd.read_csv("camels531.csv") # ‼️‼️check if this is correct dataset
+basin_list = pd.read_csv("camels531.csv") 
 gauge_id = basin_list["name"].values
 # add a leading zero if gauge_id is numeric and has length 7
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
