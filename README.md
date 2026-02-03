@@ -59,4 +59,4 @@ Follow these steps to reproduce the results:
 
 5. **Extract Analysis** → Run scripts `03`, `04`, `05` to extract dynamic parameters, run dynamic simulations, and compute feature importance, respectively and save results as csv files
 
-6. **Generate Figures** → Open `06plot_figures.ipynb` to reproduce all figures using saved csv results
+6. **Generate Figures** → Run `06plot_figures.ipynb` to reproduce all figures using saved csv results
