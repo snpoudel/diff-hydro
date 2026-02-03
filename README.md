@@ -29,11 +29,6 @@ This repository supports four hybrid model configurations:
 └── 06plot_figures.ipynb        # Generate all paper figures
 ```
 
-### Folders
-
-- **models/multi_hbv.py**: Modular implementations of MLP, LSTM, and differentiable HBV hydrological model
-- **01preprocessing/**: Scripts for preprocessing input data to support alternative model configurations
-- **02hyperparameter_tuning/**: Hyperparameter optimization scripts for MLP+1HBV, MLP+16HBV, LSTM+1HBV, and LSTM+16HBV models
 
 ### Main Scripts
 
