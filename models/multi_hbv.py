@@ -1,4 +1,9 @@
-# /models/hbv.py
+'''
+Contains modules for multi-unit HBV model and parameter estimation networks.
+
+Author: Sandeep Poudel (1/12/2026)
+'''
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

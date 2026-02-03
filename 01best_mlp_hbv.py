@@ -1,6 +1,5 @@
 '''
-Experiment: Thinned input features- It only uses few static features as input to MLP.
-Use best MLP-HBV model saved from tuning experiment and make predictions on all CAMELS basins.
+Use best (from hyperparameter tuning) MLP-HBV model and make predictions on all CAMELS basins.
 Run both 1hbv unit and 16 hbv units models.
 
 Author: Sandeep Poudel (1/12/2026)
@@ -18,25 +17,28 @@ from models.multi_hbv import MLPParameterNet, DifferentiableMHBV, constrain_mult
 #-------------------------------#--------------------------------#-------------------------------#--------------------------------#-------------------------------#
 # Configuration
 
-## selct static features either including lat, lon or excluding lat, lon
-
-# static_feats_names = ['mean_precip', 'sd_precip', 'mean_tmax', 'sd_tmax', 'mean_tmin', 'sd_tmin',
-#  'mean_daylenhr', 'sd_daylenhr', 'lat', 'lon', 'elev_mean', 'slope_mean', 'area_gages2'
-# ]
-static_feats_names = ['mean_precip', 'sd_precip', 'mean_tmax', 'sd_tmax', 'mean_tmin', 'sd_tmin',
- 'mean_daylenhr', 'sd_daylenhr', 'elev_mean', 'slope_mean', 'area_gages2'
+static_feats_names = [
+    "elev_mean", "slope_mean", "area_gages2", "p_mean", "pet_mean", "aridity",
+    "p_seasonality", "frac_snow", "high_prec_freq", "high_prec_dur",
+    "low_prec_freq", "low_prec_dur", "frac_forest", "lai_max", "lai_diff",
+    "gvf_max", "gvf_diff", "dom_land_cover_frac", "soil_depth_pelletier",
+    "soil_depth_statsgo", "soil_porosity", "soil_conductivity", "max_water_content",
+    "sand_frac", "silt_frac", "clay_frac", "glim_1st_class_frac", "glim_2nd_class_frac",
+    "carbonate_rocks_frac", "geol_permeability",
 ]
 
-num_hbv_units = 16 # predict 16 sets of HBV parameters per basin
+# ‼️‼️Or only use latitude/longitude as static features for alternative input experiment
+# static_feats_names = ["lat", "lon"]
+
+num_hbv_units = 1 # predict 16 sets of HBV parameters per basin
 hidden_dim = 2048 # 2048 MLP hidden dimension
 print(f"Using hidden dim: {hidden_dim} with hbv unit: {num_hbv_units}")
-data_dir = "data_thinned"
-output_dir = f"output/exp_thinned/best_mlp_{num_hbv_units}hbv_nolatlon"
+data_dir = "data" # ‼️‼️Or use the correct data directory for mixed input experiment
+output_dir = f"output/best_mlp_{num_hbv_units}hbv"
 os.makedirs(output_dir, exist_ok=True)
 
-scaler_path = f"{data_dir}/scaler_camels_mlp_hbv_exp_thinned_nolatlon.pt"
-model_path = f"output/exp_thinned/best_mlp_model_{num_hbv_units}hbv_{hidden_dim}hiddensize_exp_thinned_nolatlon.pt"
-
+scaler_path = f"{data_dir}/scaler_camels_mlp_hbv.pt"
+model_path = f"output/tune_mlp_hbv/best_mlp_model_{num_hbv_units}hbv_{hidden_dim}hiddensize.pt"
 
 input_dim = len(static_feats_names) # 14 Number of static features
 output_dim = 20 # Number of HBV parameters
@@ -47,14 +49,15 @@ dropout = 0.4 # Dropout rate for MLP
 spinup_days = 365*2 # Spin-up days for HBV model
 sequence_length = spinup_days + 365  # Length of the input sequence for HBV model
 stride_length = 60 # sliding window of stride length when creating sequences
-num_ensemble = 1  # number of MC dropout samples during inference
-early_stopping_patience = 5 # Patience for early stopping
-lr_patience = 2 # Patience for learning rate reduction
+num_ensemble = 1  # number of MC dropout samples during inference, set to 1 for no MC dropout
+early_stopping_patience = 10 # Patience for early stopping
+lr_patience = 5 # Patience for learning rate reduction
 test_batch_size = 128 #Number of basins to run in parallel during inference
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Get file list from data directory
-basin_list = pd.read_csv("camels531.csv")# ‼️‼️check correct list file
+basin_list = pd.read_csv("camels531.csv") # list of all CAMELS basins 
 
 #randomly select 20% of basins as test set
 test_basin = basin_list.sample(frac=0.2, random_state=42).reset_index(drop=True)
@@ -83,7 +86,6 @@ class HBVDataset(Dataset):
         for f in file_list:
             df = pd.read_csv(f)
             # Filter rows only in the desired years
-            # df = df[df["Year"].isin(years)]
             df['date'] = pd.to_datetime(df['date'])
             df = df[df['date'].dt.year.isin(years)].reset_index(drop=True)
 
@@ -93,7 +95,7 @@ class HBVDataset(Dataset):
             qobs = df["qobs"].values.astype("float32")
             daylen = (df["daylenhr"]).values.astype("float32")
             total_days = len(df)
-            # for start in range(0, total_days - sequence_length + 1, (sequence_length-spinup_days)):  # step by (sequence_length - spinup_days)
+
             for start in range(0, total_days - sequence_length + 1, stride_length): # step by stride_length
                 end = start + sequence_length
                 self.data.append({
@@ -128,6 +130,7 @@ class HBVDataset(Dataset):
 # Training and Validation
 start_time = time.time()
 
+# MSE loss function that handles NaNs in target
 def masked_mse_loss(pred, target):
     mask = ~torch.isnan(target)
     if mask.sum() == 0:
@@ -136,18 +139,16 @@ def masked_mse_loss(pred, target):
 
 # Datasets and Loaders
 #use total of 24 years of data: 1995 to 2018; 16 years for training, 8 years for validation
-train_ds = HBVDataset(file_list, years=list(range(1990, 2006)), fit_scaler=True) # ‼️ Use years 1990-2005 for training
+train_ds = HBVDataset(file_list, years=list(range(1990, 2006)), fit_scaler=True) # ‼️ Change training years as needed
 scaler = train_ds.scaler # Get the scaler from the training dataset
-# torch.save(scaler, scaler_path) # save the scaler to a file
-if not os.path.exists(scaler_path):
-    torch.save(scaler, scaler_path) # save the scaler to a file if it doesn't exist
+torch.save(scaler, scaler_path) # save the scaler to a file
 
-valid_ds = HBVDataset(file_list, years=list(range(2006, 2015)), scaler=scaler) # ‼️ Use years 2006-2014 for validation
+valid_ds = HBVDataset(file_list, years=list(range(2006, 2015)), scaler=scaler) # ‼️ Change validation years as needed
 
 train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 valid_loader = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
 
-# Models
+# Models: Load MLP and HBV
 mlp = MLPParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout).to(device)
 hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
 
@@ -175,7 +176,7 @@ for epoch in range(1, epochs + 1):
 
         # --- MLP predicts HBV parameters ---
         pars = mlp(static)
-        pars = constrain_multi_parameters(pars, num_hbv_units)
+        pars = constrain_multi_parameters(pars, num_hbv_units) # constrain parameters to physical ranges
 
         # --- Spinup ---
         hbv_states = hbv.run_spinup(pars, precip[:, :spinup_days],
@@ -246,6 +247,7 @@ for epoch in range(1, epochs + 1):
     if epochs_no_improve >= patience:
         print(f'Early stopping triggered at epoch {epoch}. No improvement for {patience} epochs.')
         break
+
 print(f"Training complete in {(time.time() - start_time)/60:.2f} minutes")
 print(f"Best validation loss with hidden size of {hidden_dim}  with hbv unit of {num_hbv_units} is {best_val_loss:.4f} at epoch {epoch - epochs_no_improve}")
 
@@ -256,14 +258,14 @@ start_time = time.time()
 mlp = MLPParameterNet(input_dim=input_dim, hidden_dim=hidden_dim, output_dim=output_dim*num_hbv_units, dropout=dropout)
 mlp.load_state_dict(torch.load(model_path, map_location=device))
 mlp.to(device)
-mlp.eval()  # ‼️‼️run mlp in train model to enable MC dropout
+mlp.eval()  # ‼️‼️run mlp in train model if using MC dropout, else eval mode is fine
 
 scaler = torch.load(scaler_path, weights_only=False)
 
 hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
 hbv.eval()  # HBV is deterministic, eval mode is fine
 
-basin_list = pd.read_csv("camels531.csv") # ‼️‼️check if this is correct dataset
+basin_list = pd.read_csv("camels531.csv") 
 gauge_id = basin_list["name"].values
 # add a leading zero if gauge_id is numeric and has length 7
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
@@ -298,7 +300,7 @@ for i in range(0, len(file_list), test_batch_size):
     daylen = torch.tensor(np.stack(daylen_list), dtype=torch.float32).to(device)                # [B, T]
 
     with torch.no_grad():
-        ensemble_qsim = []
+        ensemble_qsim = [] # to store ensemble predictions if using MC dropout
         for _ in range(num_ensemble):
             pars = mlp(static_tensor)  # [B, P]
             pars = constrain_multi_parameters(pars, num_hbv_units)
@@ -307,7 +309,7 @@ for i in range(0, len(file_list), test_batch_size):
 
     ensemble_qsim = np.stack(ensemble_qsim, axis=2)  # [B, T, num_ensemble]
 
-    # Save per basin
+    # Save per basin predictions as csv
     for b in range(len(batch_files)):
         df = dfs[b]
         qobs = qobs_list[b]

@@ -58,12 +58,11 @@ test_batch_size = 128 #Number of basins to run in parallel during inference
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Get file list from data directory
-basin_list = pd.read_csv("camels531.csv")# ‼️‼️check correct list file
+basin_list = pd.read_csv("camels531.csv")
 
 #randomly select 20% of basins as test set
 test_basin = basin_list.sample(frac=0.2, random_state=42).reset_index(drop=True)
-#save this as a csv file
-# test_basin.to_csv(os.path.join(output_dir, "test_basins.csv"), index=False)
+
 train_basin = basin_list[~basin_list['name'].isin(test_basin['name'])].reset_index(drop=True)
 
 gauge_id = train_basin["name"].values
@@ -84,7 +83,7 @@ scaler = torch.load(scaler_path, weights_only=False)
 hbv = DifferentiableMHBV(num_hbv_units=num_hbv_units).to(device)
 hbv.eval()  # HBV is deterministic, eval mode is fine
 
-basin_list = pd.read_csv("camels531.csv") # ‼️‼️check if this is correct dataset
+basin_list = pd.read_csv("camels531.csv") 
 gauge_id = basin_list["name"].values
 # add a leading zero if gauge_id is numeric and has length 7
 gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else str(gid) for gid in gauge_id]
@@ -92,7 +91,7 @@ gauge_id = [str(gid).zfill(8) if str(gid).isdigit() and len(str(gid))==7 else st
 
 # Iterate basin by basin to get parameters using integrated gradients
 use_basins = ['01532000', '10336660', '02465493'] #basin with highes, medium, lowest parameter variance
-for basin_id in use_basins:  # ‼️change to gauge_id to run for all basins
+for basin_id in use_basins:
     file_path = os.path.join(data_dir, f"input_{basin_id}.csv")
     if not os.path.exists(file_path):
         continue
@@ -153,7 +152,7 @@ for basin_id in use_basins:  # ‼️change to gauge_id to run for all basins
 
         # Add lag and date
         df_save["lag"] = np.tile(np.arange(seq_len), num_samples) # Lag 0 is the most recent and lag seq_len-1 is the oldest observation
-        df_save["date"] = all_dates  # Perfectly matched length now
+        df_save["date"] = all_dates
 
         # Save CSV
         output_file_path = os.path.join(output_dir, f"ig_lstm_hbv_{basin_id}_par_{param_names[par_index]}.csv")
