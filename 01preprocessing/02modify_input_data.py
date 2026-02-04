@@ -1,12 +1,11 @@
 """
-First, CAMELS-US dataset is downloaded from: https://zenodo.org/records/15529996
-Next, for each basin, csv file is created which consiste of daily forcings, streamflow, and concatenated static attributes.
+First, CAMELS-US dataset is downloaded from: https://zenodo.org/records/15529996 and compiled in desired format using the script '01preprocess_camels_data.py'.
 
 Now this scripts modifies the originally created input files in two ways:
 1) Only use basic basin attributes and forcings summary statistics.
 2) Create a mixed-up dataset where all basin statics are kept but shuffled between basins.
 
-Author: Sandeep Poudel (1/12/2026)
+Author: Sandeep Poudel (Feb 04, 2026)
 """
 import pandas as pd
 import os
