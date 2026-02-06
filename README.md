@@ -1,10 +1,10 @@
-# Differentiable Hydrological Model for CAMELS-US
+# Differentiable hybrid hydrological model for CAMELS-US
 
 A physics-based, differentiable hydrological modeling framework that combines neural networks with process-based hydrological models on the CAMELS-US dataset.
 
 ## Overview
 
-This repository implements a hybrid modeling approach where neural networks (MLP or LSTM) estimate static or dynamic parameters for a differentiable HBV hydrological model. The entire framework is end-to-end differentiable, enabling gradient-based optimization of both the neural network and hydrological model components.
+This repository implements a hybrid modeling approach where neural networks (MLP or LSTM) estimate static or dynamic parameters for a differentiable HBV hydrological model. The entire framework is end-to-end differentiable, enabling gradient-based optimization.
 
 This repository supports four hybrid model configurations:
 
@@ -19,8 +19,8 @@ This repository supports four hybrid model configurations:
 
 ```
 ├── models/multi_hbv.py          # Modular implementations of MLP, LSTM, and differentiable HBV
-├── 01preprocessing/             # Data preprocessing scripts for alternative model inputs
-├── 02hyperparameter_tuning/     # Hyperparameter optimization for hybrid models
+├── 01preprocessing/             # Data preprocessing scripts
+├── 02hyperparameter_tuning/     # Hyperparameter optimization scripts for hybrid models
 ├── 01best_mlp_hbv.py           # Train/test MLP+HBV models
 ├── 02best_lstm_hbv.py          # Train/test LSTM+HBV models
 ├── 03get_params_lstm_hbv.py    # Extract dynamic HBV parameters
@@ -55,8 +55,8 @@ Follow these steps to reproduce the results:
 
 3. **Tune Models** → Run hyperparameter optimization in `02hyperparameter_tuning/`
 
-4. **Train & Evaluate** → Use best hyperparameter and execute `01best_mlp_hbv.py` and `02best_lstm_hbv.py` to make inference on all study basins and save as csv files
+4. **Train & Evaluate** → Use best hyperparameter and execute `01best_mlp_hbv.py` and `02best_lstm_hbv.py` to train and make inference on all study basins. Results will be saved as csv files.
 
-5. **Extract Analysis** → Run scripts `03`, `04`, `05` to extract dynamic parameters, run dynamic simulations, and compute feature importance, respectively and save results as csv files
+5. **Extract Analysis** → Run scripts `03`, `04`, `05` to run LSTM+1HBV hybrid model and extract dynamic parameters, simulate streamflow with dynamic parameters, and compute feature importance with Integrated Gradients, respectively. Results will be saved as csv files.
 
-6. **Generate Figures** → Run `06plot_figures.ipynb` to reproduce all figures using saved csv results
+6. **Generate Figures** → Run `06plot_figures.ipynb` to reproduce all figures using saved csv results.

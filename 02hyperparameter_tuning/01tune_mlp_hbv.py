@@ -1,8 +1,10 @@
 '''
 This is a script to tune hyperparameters for MLP-HBV model on CAMELS dataset.
 It mainly tunes the hidden layer size for single HBV model and ensemble HBV model.
-The following submission script dynamically sets hidden layer size and number of HBV units.
-
+The hidden layer size is set through environment variable HIDDEN_DIM and the number
+of HBV units is set through environment variable NUM_HBV_UNITS. Supply these when running the script, for example:
+HIDDEN_DIM=2048 NUM_HBV_UNITS=3 python 01tune_mlp_hbv.py
+```
 Author: Sandeep Poudel (1/12/2026)
 '''
 import pandas as pd
