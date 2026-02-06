@@ -40,8 +40,6 @@ class LSTMParameterNet(nn.Module):
         lstm_out, _ = self.lstm(x)
         # Use the last time step's output
         last_out = lstm_out[:, -1, :]
-        # Use mean over all time steps
-        # last_out = torch.mean(lstm_out, dim=1)
         last_out = self.dropout(last_out)
         last_out = self.fc(last_out)
         return last_out
@@ -184,7 +182,6 @@ class DifferentiableMHBV(nn.Module):
         for t in range(T):
 
             ## clamp states to a non-negative realistic range in each timestep to stabilize gradients in backprop
-            # Also relu activate states throughout the model to avoid negative states
             self.state_upres = torch.clamp(self.state_upres, min=0.0, max=2000.0)
             self.state_lowres = torch.clamp(self.state_lowres, min=0.0, max=2000.0)
             self.state_snow = torch.clamp(self.state_snow, min=0.0, max=2000.0)
@@ -280,7 +277,7 @@ class DifferentiableMHBV(nn.Module):
         return states
 
 
-# constrain MLP parameters for multiple HBV units
+# constrain MLP parameters to physical bounds for multiple HBV units
 def constrain_multi_parameters(raw_pars, num_hbv_units):
     # raw_pars: [B, 20*U]
     bounds = torch.tensor([
@@ -312,14 +309,14 @@ def constrain_multi_parameters(raw_pars, num_hbv_units):
     mins = bounds[:, 0]
     maxs = bounds[:, 1]
 
-    # Normalize raw parameters to [0, 1]
+    # Normalize raw parameters to [0, 1] using sigmoid, then scale to [min, max] of each parameter bound
     normalized = torch.sigmoid(raw_pars)
     constrained = mins + (maxs - mins) * normalized
 
     # Reshape to [B, U, I]
     B = raw_pars.shape[0]
     U = num_hbv_units
-    P = raw_pars.shape[1] // U # double divide makes this a int
+    P = raw_pars.shape[1] // U # making sure the input dimension matches 20*U
     constrained = constrained.view(B, num_hbv_units, P) # batch, num_units, num_params
     return constrained
 
