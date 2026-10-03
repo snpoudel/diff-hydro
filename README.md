@@ -51,7 +51,7 @@ Follow these steps to reproduce the results:
 
 1. **Setup Environment** → Create a virtual environment and install required packages from `requirements.txt`
 
-2. **Prepare Data** → Download CAMELS-US dataset and run preprocessing script in `01preprocessing/`
+2. **Prepare Data** → Download CAMELS-US dataset and copy all Daymet forcing files from `dynamic/daymet/01`–`18` into `dynamic/daymet/all/`. Run `01preprocessing/01preprocess_camels_data.py`, copy the files it writes to `compiled/` into `data/` at the repository root, create an empty `data_thinned/` folder there, then run `01preprocessing/02modify_input_data.py`
 
 3. **Tune Models** → Run hyperparameter optimization in `02hyperparameter_tuning/`
 
