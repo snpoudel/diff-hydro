@@ -1,6 +1,7 @@
 '''
-Contains modules for multi-unit HBV model and parameter estimation networks.
-
+Differentiable multi-unit HBV model whose parameters are estimated by a neural network (MLP or LSTM).
+The network's outputs are scaled to physical bounds, then each HBV unit simulates daily snow, soil moisture
+and runoff, routed with gamma unit hydrographs. Output is the mean flow across units or the per-unit flows as an ensemble.
 Author: Sandeep Poudel (1/12/2026)
 '''
 
