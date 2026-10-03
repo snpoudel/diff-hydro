@@ -219,7 +219,7 @@ class DifferentiableMHBV(nn.Module):
 
             remainwater = pr_eff * (1 - effratio)
             added = torch.minimum(remainwater + self.state_sma, fc) - self.state_sma
-            peff = pr_eff - remainwater
+            peff = pr_eff - added
             self.state_sma = torch.relu(self.state_sma + added)
 
             # --- ET ---
@@ -281,22 +281,22 @@ class DifferentiableMHBV(nn.Module):
 def constrain_multi_parameters(raw_pars, num_hbv_units):
     # raw_pars: [B, 20*U]
     bounds = torch.tensor([
-        [1.0, 1000.0],   # fc
-        [0.5, 5.0],    # beta
-        [0.01, 0.99],  # pwp
-        [1.0, 999.0],   # l
-        [0.01, 0.99],  # ks
-        [0.01, 0.99],  # ki
-        [0.001, 0.99],  # kb
+        [50.0, 1000.0],  # fc
+        [1.0, 6.0],    # beta
+        [0.2, 1.0],    # pwp
+        [0.0, 100.0],   # l
+        [0.05, 0.9],   # ks
+        [0.01, 0.5],   # ki
+        [0.01, 0.2],    # kb
         [0.0001, 0.99],  # kperc
-        [0.5, 2.0],    # coeff_pet
-        [0.05, 10.0],  # ddf
+        [0.5, 3.0],    # coeff_pet
+        [0.5, 10.0],   # ddf
         [0.5, 2.0],    # scf
         [-4.0, 4.0],   # ts
-        [-4.0, 4.0],   # tm
+        [-2.5, 2.5],   # tm
         [0.1, 4.0],    # tti
-        [0.05, 0.2],   # whc
-        [0.1, 1.0],    # crf
+        [0.0, 0.2],    # whc
+        [0.0, 0.1],    # crf
         [1.0, 4.0],    # d_shape
         [0.5, 4.0],    # d_scale
         [1.0, 6.0],    # b_shape
