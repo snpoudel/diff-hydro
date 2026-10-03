@@ -13,7 +13,7 @@ This repository supports four hybrid model configurations:
 - **LSTM+1HBV**: LSTM estimates dynamic parameters for a single HBV model
 - **LSTM+16HBV**: LSTM estimates dynamic parameters for 16 parallel HBV models
 
-**Publication:** [DOI link to be added]
+**Publication:** https://hess.copernicus.org/articles/30/5173/2026/hess-30-5173-2026.html
 
 ## Repository Structure
 
