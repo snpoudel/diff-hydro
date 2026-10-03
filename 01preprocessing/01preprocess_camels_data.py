@@ -84,11 +84,11 @@ def consolidate_streamflow_files(camels_dir: Path) -> None:
 
 def load_basin_list(camels_dir: Path) -> pd.DataFrame:
     """Load basin list or use all basins from camels_topo.txt."""
-    basin_file = camels_dir / 'camels_531.txt'
+    basin_file = Path(__file__).resolve().parents[1] / 'camels531.csv'
     
     if basin_file.exists():
-        print("Loading specified basin list from camels_531.txt...")
-        basins = pd.read_csv(basin_file, dtype={'gauge_id': str})
+        print("Loading specified basin list from camels531.csv...")
+        basins = pd.read_csv(basin_file, dtype={'name': str}).rename(columns={'name': 'gauge_id'})
         basins = basins[['gauge_id']]
     else:
         print("Basin list not found, using all basins from camels_topo.txt...")
@@ -158,6 +158,12 @@ def process_basin(gauge_id: str, camels_dir: Path, static_dfs: dict) -> pd.DataF
         # Repeat static values for all timesteps
         for col in filtered.columns:
             merged_df[col] = filtered[col].values[0]
+    
+    # Column names and units the training scripts read
+    merged_df['date'] = pd.to_datetime(dict(year=merged_df['Year'], month=merged_df['Mnth'], day=merged_df['Day']))
+    merged_df['daylenhr'] = merged_df['dayl(s)'] / 3600
+    merged_df = merged_df.drop(columns=['Year', 'Mnth', 'Day', 'dayl(s)']).rename(columns={
+        'prcp(mm/day)': 'precip', 'tmax(C)': 'tmax', 'tmin(C)': 'tmin', 'qobs(mm/day)': 'qobs'})
     
     return merged_df.round(4)
 
